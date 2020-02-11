@@ -48,7 +48,7 @@ for(val in x ) {
   val2 <- dec_to_hex(val)
   
   blocks <- get_blocks(val2 , count = 1)
-  blocks
+
   # some values return a 0 amount, so creating a conditional statement to automatically label zero-sum transactions as having 0 value
   if ((blocks$gasUsed) == "0x0") {
     ether_blockAmount <- append(ether_blockAmount, 0)
