@@ -1,0 +1,118 @@
+---
+title: "R Ethereum Block Searcher"
+output: html_notebook
+---
+
+This is the Alpha version of the R programming built ethereum Block Explorer
+
+
+```{r}
+library(ether)
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(ggrepel)
+library(lubridate)
+library(scales)
+library(gridExtra)
+library(ggthemes)
+```
+
+
+
+```{r}
+## for the identifying how many blocks has passed since the script began
+n<-0
+
+## A Variable that specifies the blocks it begin the search with and ending block number to search
+x <- c(919900:919995)
+
+## An ethereum named data frame for storing the variables
+ethereum <- data.frame(BlockNumber = x)
+
+## Below are list that store the variables for the timestamps, block number, hex associated with the block number, the transaction amount of the block, the ether value of the block, and the ether hash
+etherdate <- list()
+ether_blockNumber <- list()
+ether_hexNumber <- list()
+ether_blockTransactioncount <- list()
+##etherYear <- list()
+ether_blockAmount <- list()
+ether_hash <- list()
+
+
+# Using a for loop to go through each hex number in the chosen column
+for(val in x ) {
+  
+  #using the get_block function to loop through each number and get it's block details
+  
+  val2 <- dec_to_hex(val)
+  
+  blocks <- get_blocks(val2 , count = 1)
+  blocks
+  # some values return a 0 amount, so creating a conditional statement to automatically label zero-sum transactions as having 0 value
+  if ((blocks$gasUsed) == "0x0") {
+    ether_blockAmount <- append(ether_blockAmount, 0)
+    ether_blockTransactioncount <- append(ether_blockTransactioncount, 0)
+    ether_hexNumber <- append(ether_hexNumber, val2)
+    ##ether_blockNumber <- append(ether_blockNumber, val)
+    etherdate <-append(etherdate, blocks$timestamp)
+    ether_hash <-append(ether_hash, blocks$hash)
+    n <- n+1
+    print(n)
+    next
+  } else {
+    
+    # appending data from the for-loop into each of the respective lists the data belongs to
+    
+    etherdate <-append(etherdate, blocks$timestamp)
+    ##ether_blockNumber <- append(ether_blockNumber, val)
+    ether_hexNumber <- append(ether_hexNumber, val2)
+    ether_blockTransactioncount <- append(ether_blockTransactioncount, eth_getBlockTransactionCountByHash(blocks$hash))
+    ether_hash <-append(ether_hash, blocks$hash)
+    
+    
+    
+    ## using a nested for loop to get the USD value attached to each block 
+    ## Using the function eth_getBlock to get the hash and also gain its variable for transations and pull those values out in one line
+    for( v in (eth_getBlock(blocks$hash)$transactions)[,c('value')]) { 
+      
+      #transforms the hex number into a redeable decimal value
+      dvalue <- sprintf("%.2f", as.numeric(v))
+      x = 1000000000000000000
+      
+      # turn the value from gwei(the smallest unit of ether) to a regular ether value 
+      ethvalue <- as.numeric(dvalue)/x
+      
+      #sums all the values and stores them in a list
+      
+      eth_Value_inBlock <- Reduce('+',ethvalue)
+      ether_blockAmount <- append(ether_blockAmount, eth_Value_inBlock)
+      n <- n+1
+      print(n)
+      
+    }
+    
+  }
+  
+  
+  
+}
+## Puts the data into specific data labels in the ethereum data frame
+ethereum$etherdate <- as_datetime(etherdate)
+##ethereum$ether_blockNumber <- as.numeric(ether_blockNumber)
+ethereum$ether_hexNumber <- as.character(ether_hexNumber)
+ethereum$ether_blockTransactioncount <- as.numeric(ether_blockTransactioncount)
+ethereum$ether_blockAmount <- as.numeric(ether_blockAmount)
+ethereum$ether_hash <- as.character(ether_hash)
+
+## Names the variables
+names(ethereum) <- c('Block Number','TimeStamp','Block Hex Number','Block Transaction Amount','Ether Block Value', 'Ether Block Hash')
+
+##save the ethereum code
+save(ethereum, file = 'ethereumdataset.csv')
+ethereum
+##saves the file locally 
+
+```
+
+##By Corey Mayweather
